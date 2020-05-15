@@ -1,5 +1,5 @@
 # shogiBot
-Discord bot for playing shogi made with Discord.js and PIL
+Discord bot for playing shogi made with Discord.js and PIL  
 ![Shogi Piece](oushou.jpeg)
 ## Basic Commands
 `s.help`  
