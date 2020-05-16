@@ -388,7 +388,7 @@ function acceptmatch(message, args) {
     }
     const taggedUser = message.mentions.users.first();
     for(i = 0; i < matches.length + 1; i++) {
-        if (matches[i] != undefined && matches[i].challenger == taggedUser.username) {
+        if (matches[i] != undefined && matches[i].challenger == taggedUser.username && matches[i].status != "playing") {
             matches[i].accept(`${message.author.username}`);
             message.channel.send(`You accepted ${taggedUser.username}'s match!\nGet ready to play!`);
             game = new Game(matches[i].challenger,matches[i].opponent);
@@ -423,7 +423,7 @@ class Game {
     async displayGame(channel) {
         const file = this.title.replace(/\s/g,'_') + '.png';
         try {
-            const args = this.board + " " + this.style + " " + file;
+            const args = this.board + " " + this.style + " " + './games/' +  file;
             await execute("python",["drawboard.py",args],"./");
             this.gameBoard = file;
         }
@@ -434,7 +434,7 @@ class Game {
             .setColor('#fee6b3')
             .setTitle(this.title)
             //.setDescription to current player turn
-            .attachFiles([this.gameBoard])
+            .attachFiles(['./games/' + this.gameBoard])
             .setImage('attachment://' + this.gameBoard)
             .addField('Moves',(this.moves == '')?'None':this.moves)
             .addField('Game Data','||' + this.board + " " + this.style + '||')
