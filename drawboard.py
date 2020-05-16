@@ -117,7 +117,7 @@ xHand = 226
 boardBase = 0
 boardHeight = 2296
 
-def main(sfen,icon): # draw board from sfen string
+def main(sfen,icon,filename): # draw board from sfen string
     if len(sfen) == 4:
         # Use intl. pieces
         if icon == "intl":
@@ -211,15 +211,17 @@ def main(sfen,icon): # draw board from sfen string
                     add = False
 
         # Save board as image
-        board.save("temp.png")
+        board.save(filename)
 
 # From shell or node (exec)
 try:
     sfen = sys.argv[1:5]
     icon = sys.argv[5]
+    filename = sys.argv[6]
 except:
     sfen = sys.argv[1].split()[0:4]
     icon = sys.argv[1].split()[4]
+    filename = sys.argv[1].split()[5]
 
 # Call main function
-main(sfen,icon)
+main(sfen,icon,filename)

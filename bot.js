@@ -344,19 +344,6 @@ class match {
 
 var matches = [];
 
-function acceptmatch(message, args) {
-    if(!message.mentions.users.size) {
-        return message.channel.send('You did not specify whose match to accept.');
-    }
-    const taggedUser = message.mentions.users.first();
-    for(i = 0; i < matches.length + 1; i++) {
-        if (matches[i] != undefined && matches[i].challenger == taggedUser.username) {
-            matches[i].accept(`${message.author.username}`);
-            return message.channel.send(`You accepted ${taggedUser.username}'s match!\nGet ready to play!`);
-        }
-    }
-}
-
 function playgame(message, args) {
     if (!message.mentions.users.size) {
         challengers = "";
@@ -393,6 +380,66 @@ function playgame(message, args) {
     const taggedUser = message.mentions.users.first();
     matches.push(new match(`${message.author.username}`,`${taggedUser.username}`));
     message.channel.send(`You challenged ${taggedUser.username}!`);
+}
+
+function acceptmatch(message, args) {
+    if(!message.mentions.users.size) {
+        return message.channel.send('You did not specify whose match to accept.');
+    }
+    const taggedUser = message.mentions.users.first();
+    for(i = 0; i < matches.length + 1; i++) {
+        if (matches[i] != undefined && matches[i].challenger == taggedUser.username) {
+            matches[i].accept(`${message.author.username}`);
+            message.channel.send(`You accepted ${taggedUser.username}'s match!\nGet ready to play!`);
+            game = new Game(matches[i].challenger,matches[i].opponent);
+            game.displayGame(message.channel);
+            return
+        }
+    }
+    message.channel.send('Could not find a matching request.');
+}
+
+class Game {
+    startPosition = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1";
+    constructor(challenger,opponent) {
+        this.title = challenger + " vs. " + opponent;
+        this.board = this.startPosition;
+        this.style = "trad";
+        this.moves = "";
+    }
+    setGameData(board,style,moves) {
+        this.board = board;
+        this.style = style;
+        this.moves = moves;
+    }
+    // todo/to move - 
+    /*
+     - convert sfen to 2d array
+     - check if valid move
+     - update array
+     - convert back to sfen
+     - display :)
+    */
+    async displayGame(channel) {
+        const file = this.title.replace(/\s/g,'_') + '.png';
+        try {
+            const args = this.board + " " + this.style + " " + file;
+            await execute("python",["drawboard.py",args],"./");
+            this.gameBoard = file;
+        }
+        catch(err) {
+            this.gameBoard = "error.png";
+        }
+        const gameEmbed = new Discord.MessageEmbed()
+            .setColor('#fee6b3')
+            .setTitle(this.title)
+            //.setDescription to current player turn
+            .attachFiles([this.gameBoard])
+            .setImage('attachment://' + this.gameBoard)
+            .addField('Moves',(this.moves == '')?'None':this.moves)
+            .addField('Game Data','||' + this.board + " " + this.style + '||')
+        channel.send(gameEmbed);
+    }
 }
 
 const client = new Discord.Client()
