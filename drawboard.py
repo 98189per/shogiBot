@@ -103,19 +103,20 @@ numbers = {
 }
 
 # Presets for board/piece sizes
-xOffset = 346
-yOffset = 338
-xBox = 164
-yBox = 214
-xSize = 99
-ySize = 138
-xCombo = 40
-yCombo = 69
-xHandOffset = 368
-yHandOffset = 68
-xHand = 226
-boardBase = 0
-boardHeight = 2296
+scale = 2
+xOffset = 346 // scale
+yOffset = 338 // scale
+xBox = 164 // scale
+yBox = 214 // scale
+xSize = 99 // scale
+ySize = 138 // scale
+xCombo = 40 // scale
+yCombo = 69 // scale
+xHandOffset = 368 // scale
+yHandOffset = 68 // scale
+xHand = 226 // scale
+boardBase = 0 // scale
+boardHeight = 2296 // scale
 
 def main(sfen,icon,filename): # draw board from sfen string
     if len(sfen) == 4:
