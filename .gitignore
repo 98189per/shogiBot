@@ -1,5 +1,14 @@
+# for editing sprites
 drawing
+
+# stores gameboard images
 games
+
+# original resources (2x larger)
 l_resources
+
+# node_modules / download yourself
 node_modules
+
+# testing output (s.board ... [-o] temp.png)
 temp.png
