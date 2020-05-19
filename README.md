@@ -12,7 +12,8 @@ Curretly *no where close* to being done. Check back for updates.
 `s.style`  
 `s.move`  
 `s.drop`  
-`s.undo`
+`s.undo`  
+`s.resign`
 ## Image sources
 Board and Pieces: https://genedavissoftware.com/  
 Numbers: https://www.onlygfx.com/  
