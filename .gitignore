@@ -10,5 +10,9 @@ l_resources
 # node_modules / download yourself
 node_modules
 
+# contains auth token
+auth.json
+config.json
+
 # testing output (s.board ... [-o] temp.png)
 temp.png

@@ -1,67 +1,67 @@
 const Discord = require('discord.js')
 
-const { prefix, token } = require('../shogiBot_config.json');
+const { prefix, token } = require('./config.json');
 
 const commandEmbed = new Discord.MessageEmbed()
     .setColor('#fee6b3')
     .setTitle('`help` usage')
-    .setDescription('`s.help [command name]`')
+    .setDescription(`\`${prefix}help [command name]\``)
     .setTimestamp()
     
 const rulesEmbed = new Discord.MessageEmbed()
     .setColor('#fee6b3')
     .setTitle('`rules` usage')
-    .setDescription('`s.rules [page]`')
+    .setDescription(`\`${prefix}rules [page]\``)
     .setTimestamp()
 
 const playEmbed = new Discord.MessageEmbed()
     .setColor('#fee6b3')
     .setTitle('`play` usage')
     .setDescription('challenge opponents or cpu')
-    .addField('view games:','`s.play`')
-    .addField('request game:','`s.play [@username | open | cpu]`')
+    .addField('view games:',`\`${prefix}play\``)
+    .addField('request game:',`\`${prefix}play [@username | open | cpu]\``)
     .setTimestamp()
     
 const acceptEmbed = new Discord.MessageEmbed()
     .setColor('#fee6b3')
     .setTitle('`accept` usage')
-    .addField('accept an open request:','`s.accept [@username]`')
+    .addField('accept an open request:',`\`${prefix}accept [@username]\``)
     .setTimestamp()
 
 const styleEmbed = new Discord.MessageEmbed()
     .setColor('#fee6b3')
     .setTitle('`style` usage')
     .setDescription('change piece style (traditional or international pieces)')
-    .addField('on the first turn of a game:','`s.style [trad | intl]`')
+    .addField('on the first turn of a game:',`\`${prefix}style [trad | intl]\``)
     .setTimestamp()
     
 const moveEmbed = new Discord.MessageEmbed()
     .setColor('#fee6b3')
     .setTitle('`move` usage')
     .setDescription('move a piece on your turn')
-    .addField('initial piece coordinates -> (no whitespace) final coordinates (e.g. 7g7f)','`s.move [xyxy]`')
-    .addField('promote a piece when valid (no whitespace)','`s.move [xyxy]+`')
+    .addField('initial piece coordinates -> (no whitespace) final coordinates (e.g. 7g7f)',`\`${prefix}move [xyxy]\``)
+    .addField('promote a piece when valid (no whitespace)',`\`${prefix}move [xyxy]+\``)
     .setTimestamp()
 
 const dropEmbed = new Discord.MessageEmbed()
     .setColor('#fee6b3')
     .setTitle('`drop` usage')
     .setDescription('drop a piece in a valid location on your turn')
-    .addField('piece -> (no whitespace) * coordinates (no whitespace)','`s.drop [X]*[xy]`')
-    .addField('*can also be used in *`move`:','`s.move [X]*[xy]`')
+    .addField('piece -> (no whitespace) * coordinates (no whitespace)',`\`${prefix}drop [X]*[xy]\``)
+    .addField('*can also be used in *`move`:',`\`${prefix}move [X]*[xy]\``)
     .addField('\u200b','piece letters: (P)awn, (L)ance, k(N)ight, (S)ilver, (G)old, (B)ishop, (R)ook')
     .setTimestamp()
     
 const undoEmbed = new Discord.MessageEmbed()
     .setColor('#fee6b3')
     .setTitle('`undo` usage')
-    .addField('undo your last move before your turn ends (the opponent moves)','`s.undo`')
+    .addField('undo your last move before your turn ends (the opponent moves)',`\`${prefix}undo\``)
     .setTimestamp()
 
 const resignEmbed = new Discord.MessageEmbed()
     .setColor('#fee6b3')
     .setTitle('`resign` usage')
-    .addField('resign from a current match (lose)','`s.resign`')
+    .addField('resign from a current match (lose)',`\`${prefix}resign\``)
     .setTimestamp()
 
 const helpEmbed = new Discord.MessageEmbed()
@@ -71,7 +71,7 @@ const helpEmbed = new Discord.MessageEmbed()
     .attachFiles(['./oushou.jpeg'])
     .setThumbnail('attachment://oushou.jpeg')
     .addField('Commands', '`help`\n`rules`\n`play`\n`accept`\n`style`\n`move`\n`drop`\n`undo`\n`resign`')
-    .addField('\u200b','for help with a specific command enter `s.help [command name]`')
+    .addField('\u200b',`for help with a specific command enter \`${prefix}help [command name]\``)
     .setTimestamp()
     .setFooter('Stay tuned! Considering adding taikyoku shogi next...')
 
@@ -80,7 +80,7 @@ function helpmessage(message, args) {
         return message.channel.send(helpEmbed);
     }
 
-    if (args[0][0] + args[0][1] == "s.") {
+    if (args[0][0] + args[0][1] == prefix) {
         cmd = args[0].slice(2,args[0].length);
     } else {
         cmd = args[0];
