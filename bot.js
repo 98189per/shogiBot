@@ -48,7 +48,6 @@ const dropEmbed = new Discord.MessageEmbed()
     .setTitle('`drop` usage')
     .setDescription('drop a piece in a valid location on your turn')
     .addField('piece -> (no whitespace) * coordinates (no whitespace)',`\`${prefix}drop [X]*[xy]\``)
-    .addField('*can also be used in *`move`:',`\`${prefix}move [X]*[xy]\``)
     .addField('\u200b','piece letters: (P)awn, (L)ance, k(N)ight, (S)ilver, (G)old, (B)ishop, (R)ook')
     .setTimestamp()
     
@@ -80,8 +79,8 @@ function helpmessage(message, args) {
         return message.channel.send(helpEmbed);
     }
 
-    if (args[0][0] + args[0][1] == prefix) {
-        cmd = args[0].slice(2,args[0].length);
+    if (args[0].slice(0,prefix.length) == prefix) {
+        cmd = args[0].slice(prefix.length,args[0].length);
     } else {
         cmd = args[0];
     }
@@ -346,28 +345,28 @@ async function drawboard(message, args) {
 }
 
 class match {
-    constructor(challenger,type) {
+    constructor(challenger,type,id) {
         this.challenger = challenger;
+        this.id = id;
         if(type == 'open') {
-            this.type = "open";
-            this.status = "open";
+            this.type = 'open';
+            this.status = 'open';
         } else {
             this.opponent = type;
             this.status = "requested";
         }
     }
     accept(opponent) {
-        if (this.type == 'open') {
-            this.opponent = opponent;
-        }
+        this.opponent = opponent;
         this.status = "playing"
     }
 }
 
-var matches = [];
+var globalMatches = [];
 
 function playgame(message, args) {
-    if (!message.mentions.users.size) {
+    matches = globalMatches.filter(m => m.id == message.guild.id);
+    if(!message.mentions.users.size && !args.length) {
         challengers = "";
         statuses = "";
         opponents = "";
@@ -383,7 +382,7 @@ function playgame(message, args) {
             } else {
                 statuses += "`------`\n";
             }
-            if (matches[i] != undefined && matches[i].type != 'open') {
+            if (matches[i] != undefined && matches[i].opponent != null) {
                 opponents += "`" + matches[i].opponent + "`\n";
             } else {
                 opponents += "`------`\n";
@@ -392,30 +391,69 @@ function playgame(message, args) {
         boardEmbed = new Discord.MessageEmbed()
             .setColor('#fee6b3')
             .setTitle('Current Games')
-            .setDescription('use `s.accept` to play one of them')
+            .setDescription(`use \`${prefix}accept\` to play one of them`)
             .addField('challenger(sente)    |',`${challengers}`,true)
             .addField('status               |',`${statuses}`,true)
             .addField('opponent(gote)        ',`${opponents}`,true)
             .setTimestamp()
-        return message.channel.send(boardEmbed);
+        message.channel.send(boardEmbed);
+    } else if(args[0] == 'open') {
+        if(matches.filter(m => m.challenger == message.author.username).length != 0 ||
+            matches.filter(m => m.opponent == message.author.username).length != 0) {
+                return message.channel.send(`<@${message.author.id}> you are already in a match!`);
+        }
+        globalMatches.push(new match(message.author.username,'open',message.guild.id));
+        message.channel.send(`<@${message.author.id}> is hosting an open match!`)
+    } else {
+        if(matches.filter(m => m.challenger == message.author.username).length != 0 ||
+            matches.filter(m => m.opponent == message.author.username).length != 0) {
+                return message.channel.send(`<@${message.author.id}> you are already in a match!`);
+        }
+        const taggedUser = message.mentions.users.first();
+        globalMatches.push(new match(message.author.username,taggedUser.username,message.guild.id));
+        message.channel.send(`${message.author.username} challenged <@${taggedUser.id}>!`);
     }
-    const taggedUser = message.mentions.users.first();
-    matches.push(new match(`${message.author.username}`,`${taggedUser.username}`));
-    message.channel.send(`You challenged ${taggedUser.username}!`);
+}
+
+async function resign(message, args) {
+    /*matches = globalMatches.filter(m => m.id == message.guild.id);
+    if(matches.filter(m => m.challenger == message.author.username).length == 0 &&
+        matches.filter(m => m.opponent == message.author.username).length == 0) 
+            return message.channel.send(`<@${message.author.id}> you are not in any matches right now!`);*/
+    //matches = matches.filter(m => m.challenger == message.author.username || m.opponent == message.author.username)[0];
+    gameMessage = await getMessage(message);
+    if(gameMessage != null) {
+        challenger = gameMessage.embeds[0].title.split(' ')[0];
+        opponent = gameMessage.embeds[0].title.split(' ')[2];
+        winner = challenger == message.author.username ? opponent : challenger;
+        message.channel.send(`<@${message.author.id}> has resigned,  <@${client.users.cache.find(user => user.username == winner).id}> is the winner!`);
+        try {
+            index = globalMatches.findIndex(m => m.challenger == message.author.username || m.opponent == message.author.username);
+            globalMatches.splice(index, 1);
+        } catch(err) {}
+    }
 }
 
 function acceptmatch(message, args) {
+    matches = globalMatches.filter(m => m.id == message.guild.id);
+    if(matches.filter(m => m.challenger == message.author.username).length != 0 ||
+        matches.filter(m => m.opponent == message.author.username).length != 0) {
+            if(matches.filter(m => m.challenger == message.author.username)[0].challenger != message.author.username)
+                return message.channel.send(`<@${message.author.id}> you are already in a match!`);
+    }
     if(!message.mentions.users.size) {
         return message.channel.send('You did not specify whose match to accept.');
     }
     const taggedUser = message.mentions.users.first();
     for(i = 0; i < matches.length + 1; i++) {
-        if (matches[i] != undefined && matches[i].challenger == taggedUser.username && matches[i].status != "playing") {
-            matches[i].accept(`${message.author.username}`);
-            message.channel.send(`You accepted ${taggedUser.username}'s match!\nGet ready to play!`);
-            game = new Game(matches[i].challenger,matches[i].opponent);
-            game.displayGame(message);
-            return
+        if(matches[i] != undefined && matches[i].challenger == taggedUser.username && matches[i].status != 'playing') {
+            if( matches[i].status == 'open' || (matches[i].status == 'requested' && matches[i].opponent == message.author.username) ) {
+                matches[i].accept(`${message.author.username}`);
+                message.channel.send(`You accepted <@${taggedUser.id}>'s match!\nGet ready to play!`);
+                game = new Game(matches[i].challenger,matches[i].opponent);
+                game.displayGame(message);
+            }
+            return;
         }
     }
     message.channel.send('Could not find a matching request.');
@@ -490,7 +528,7 @@ class Game {
         let rem = this.board.split(' ').slice(1,this.board.length);
         this.board = fen + ' ' + rem.join(' ');
     }
-    move(move,message) {
+    move(move,message,opponent) {
         this.updateArray();
         let rank = (isNaN(move.charAt(0)) ? move.charAt(0).toLowerCase().charCodeAt(0) - 97 + 1 : parseInt(move.charAt(0))) - 1;
         let file = 9 - (isNaN(move.charAt(1)) ? move.charAt(1).toLowerCase().charCodeAt(0) - 97 + 1 : parseInt(move.charAt(1)));
@@ -524,6 +562,14 @@ class Game {
             }
             const piece = this.array[rank][file];
             this.array[rank][file] = '_';
+            if(this.array[destx][desty].replace('+','').toLowerCase() == 'k') {
+                message.channel.send(`<@${message.author.id}> has captured the enemy king and won the game! <@${client.users.cache.find(user => user.username == opponent).id}> has lost!`);
+                try {
+                    const index = globalMatches.findIndex(m => m.challenger == message.author.username || m.opponent == message.author.username);
+                    globalMatches.splice(index, 1);
+                } catch(err) {}
+                return false;
+            }
             if(this.array[destx][desty] != '_')
                 this.board = capture(this.board,this.array[destx][desty]);
             this.array[destx][desty] = piece;
@@ -555,13 +601,28 @@ class Game {
     }
 }
 
-async function movepiece(message, args) {
+async function getMessage(message) {
     var gameFound = false;
     var limit = 10;
     var gameMessage = null;
     while (!gameFound) {
+        gameWon = null;
         messageList = await message.channel.messages.fetch({ limit: limit });
-        messageList = messageList.filter(m => m.author.id === client.user.id)
+        messageList = messageList.filter(m => m.author.id === client.user.id);
+        tempList = [...messageList.values()];
+        for(i = 0; i < messageList.size; i++) {
+            m = tempList[i];
+            if(m.content.includes('won') || m.content.includes('winner')) {
+                //console.log(m,m.mentions.users.filter(users => users.id == message.author.id).size,message.author.id);
+                if(m.mentions.users.filter(users => users.id == message.author.id).size > 0) {
+                    gameWon = m;
+                    break;
+                }
+            }
+        }
+        if(gameWon != null)
+            messageList = messageList.filter(m => m.createdTimestamp > gameWon.createdTimestamp);
+        //console.log([...messageList])
         messageList.forEach( m => {
             try {
                 if(m.embeds[0].title.split(' ')[0] == message.author.username || m.embeds[0].title.split(' ')[2] == message.author.username) {
@@ -572,12 +633,22 @@ async function movepiece(message, args) {
             } catch(err) {}
         })
         limit += 10;
-        if(limit == 100)
+        if(limit == 100 || gameWon != null)
             break;
     }
+    //console.log(gameWon.createdTimestamp,gameWon.content);
     if(!gameFound)
         message.channel.send('The match could not be found. (Does not exist/too old)');
-    else {
+    else 
+        return gameMessage;
+}
+
+async function movepiece(message, args) {
+    if (!args.length || args[0].length != 4) {
+        return message.channel.send(`<@${message.author.id}> please make sure you are following the correct format \`${prefix}move [xyxy]\``);
+    }
+    gameMessage = await getMessage(message);
+    if(gameMessage != null) {
         challenger = gameMessage.embeds[0].title.split(' ')[0];
         opponent = gameMessage.embeds[0].title.split(' ')[2];
         if(gameMessage.embeds[0].fields[0].name == 'Moves') 
@@ -591,7 +662,8 @@ async function movepiece(message, args) {
         }
         game = new Game(challenger,opponent);
         game.setGameData(board,style,moves);
-        if(game.move(args[0],message)) {
+        opponent = message.author.username == opponent ? challenger : opponent;
+        if(game.move(args[0],message,opponent)) {
             board = game.board;
             board = board.split(' ');
             board[1] = board[1] == 'b' ? 'w' : 'b';
@@ -627,7 +699,7 @@ function capture(board,piece) {
         newPiece = piece.toLowerCase();
     else
         newPiece = piece.toUpperCase();
-    if(piece != 'rem') {
+    if(piece != 'rem') { //for drops i assume? i can't remember now...
         hands[newPiece] += 1;
     } else {
         hands[newPiece] -= 1;
@@ -667,9 +739,9 @@ function validate(piece, start, dest, board) {
         case 'l':
             if(dest[1] != start[1] || dest[0] < start[0])
                 return false;
-            for(i = start[0]+1; i < dest[0]; i++) {
+            for(i = start[0]+1; i <= dest[0]; i++) {
                 mask = board[i][dest[1]];
-                if(mask != '_' && mask != mask.toUpperCase())
+                if( (mask != '_' && i != dest[0]) || mask != mask.toUpperCase() )
                     return false;
             }
             return true;
@@ -714,17 +786,23 @@ function validate(piece, start, dest, board) {
             if(dest[1] == start[1]) {
                 for(i = Math.min(start[0],dest[0])+1; i < Math.max(start[0],dest[0]); i++) {
                     mask = board[i][dest[1]];
-                    if(mask != '_' && mask != mask.toUpperCase())
+                    if(mask != '_' && i != dest[0])
                         return false;
                 }
+                mask = board[dest[0]][dest[1]];
+                if(mask != mask.toUpperCase())
+                    return false;
                 return true;
             }
             if(dest[0] == start[0]) {
                 for(i = Math.min(start[1],dest[1])+1; i < Math.max(start[1],dest[1]); i++) {
                     mask = board[dest[0]][i];
-                    if(mask != '_' && mask != mask.toUpperCase())
+                    if(mask != '_' && i != dest[1])
                         return false;
                 }
+                mask = board[dest[0]][dest[1]];
+                if(mask != mask.toUpperCase())
+                    return false;
                 return true;
             }
             return false;
@@ -740,10 +818,14 @@ function validate(piece, start, dest, board) {
             if((dest[0]-start[0])/(dest[1]-start[1]) == 1 || (dest[0]-start[0])/(dest[1]-start[1]) == -1 ) {
                 for(i = Math.min(start[0],dest[0])+1; i < Math.max(start[0],dest[0]); i++) {
                     mask = board[i][Math.min(start[1],dest[1])+i-Math.min(start[0],dest[0])];
-                    console.log(mask);
-                    if(mask != '_' && mask != mask.toUpperCase())
-                        return false;
+                    if( (mask != '_' && i != dest[0] &&
+                        Math.min(start[1],dest[1])+i-Math.min(start[0],dest[0]) != dest[1]) || 
+                        mask != mask.toUpperCase() )
+                            return false;
                 }
+                mask = board[dest[0]][dest[1]];
+                if(mask != mask.toUpperCase())
+                    return false;
                 return true;
             }
             return false;
@@ -764,9 +846,9 @@ function validate(piece, start, dest, board) {
         case 'L':
             if(dest[1] != start[1] || dest[0] > start[0])
                 return false;
-            for(i = start[0]-1; i > dest[0]; i--) {
+            for(i = start[0]-1; i >= dest[0]; i--) {
                 mask = board[i][dest[1]];
-                if(mask != '_' && mask != mask.toLowerCase())
+                if( (mask != '_' && i != dest[0]) || mask != mask.toLowerCase() )
                     return false;
             }
             return true;
@@ -811,17 +893,23 @@ function validate(piece, start, dest, board) {
             if(dest[1] == start[1]) {
                 for(i = Math.min(start[0],dest[0])+1; i < Math.max(start[0],dest[0]); i++) {
                     mask = board[i][dest[1]];
-                    if(mask != '_' && mask != mask.toLowerCase())
+                    if(mask != '_' && i != dest[0])
                         return false;
                 }
+                mask = board[dest[0]][dest[1]];
+                if(mask != mask.toLowerCase())
+                    return false;
                 return true;
             }
             if(dest[0] == start[0]) {
                 for(i = Math.min(start[1],dest[1])+1; i < Math.max(start[1],dest[1]); i++) {
                     mask = board[dest[0]][i];
-                    if(mask != '_' && mask != mask.toLowerCase())
+                    if(mask != '_' && i != dest[1])
                         return false;
                 }
+                mask = board[dest[0]][dest[1]];
+                if(mask != mask.toLowerCase())
+                    return false;
                 return true;
             }
             break;
@@ -837,10 +925,14 @@ function validate(piece, start, dest, board) {
             if((dest[0]-start[0])/(dest[1]-start[1]) == 1 || (dest[0]-start[0])/(dest[1]-start[1]) == -1 ) {
                 for(i = Math.min(start[0],dest[0])+1; i < Math.max(start[0],dest[0]); i++) {
                     mask = board[i][Math.min(start[1],dest[1])+i-Math.min(start[0],dest[0])];
-                    console.log(mask);
-                    if(mask != '_' && mask != mask.toLowerCase())
-                        return false;
+                    if( (mask != '_' && i != dest[0] &&
+                        Math.min(start[1],dest[1])+i-Math.min(start[0],dest[0]) != dest[1]) || 
+                        mask != mask.toLowerCase() )
+                            return false;
                 }
+                mask = board[dest[0]][dest[1]];
+                if(mask != mask.toLowerCase())
+                    return false;
                 return true;
             }
             return false;
@@ -887,6 +979,8 @@ client.on('message', message => {
     } else if (command === 'move') {
         //testGame.move(args[0],message);
         movepiece(message,args);
+    } else if (command === 'resign') {
+        resign(message,args);
     }
 
 }) 
