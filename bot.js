@@ -48,6 +48,7 @@ const dropEmbed = new Discord.MessageEmbed()
     .setTitle('`drop` usage')
     .setDescription('drop a piece in a valid location on your turn')
     .addField('piece -> (no whitespace) * coordinates (no whitespace)',`\`${prefix}drop [X]*[xy]\``)
+    .addField(`can be used in \`${prefix}move\` as well`,`\`${prefix}move [X]*[xy]\``)
     .addField('\u200b','piece letters: (P)awn, (L)ance, k(N)ight, (S)ilver, (G)old, (B)ishop, (R)ook')
     .setTimestamp()
     
@@ -235,7 +236,7 @@ const rulesPageOne = new Discord.MessageEmbed()
     .setTitle('How to play Shogi')
     .setDescription('A brief overview of the rules')
     .addField('Page 1 - What is Shogi?',`Shogi, also known as Japanese chess or the Game of Generals is a two-player strategy board game \
-        native to Japan. What makes Shogi different from Western chess is that it allows captures pieces to be \
+        native to Japan. What makes Shogi different from Western chess is that it allows captured pieces to be \
         return to the board by the capturing player. In addition, the board has 81 squares instead of 64, \
         comprising of 9 ranks (rows) and 9 files (columns). The first player is called *Sente* (先手), and plays \
         black, the second player is called *Gote* (後手) and plays white. Each player has 20 pieces, which look the same \
@@ -263,7 +264,36 @@ const rulesPageTwoFooter = new Discord.MessageEmbed()
     .setTimestamp()
     .setFooter('Showing page 2 of 3')
 
-//const rulesPageThree = new Discord.MessageEmbed()
+const rulesPageThree = new Discord.MessageEmbed()
+    .setColor('#fee6b3')
+    .setTitle('Promotions and Drops')
+    .addField('Promoting Pieces',`The Promotion zone is the three ranks on the board \
+        farthest from you. This is the space occupied by your opponents pieces at the start \
+        of the game. When a piece is moved, if part of its path lies within the promotion \
+        zone(moving into, out of, or within it), then you have the option to promote it. \
+        This is signified by turning it over to reveal its promoted side. Promotion is optional \
+        unless a pawn or lance is moved to the last rank, or a knight to the last two ranks, since \
+        that piece would have no legal moves the next turn. When a piece is captured, it loses \
+    its promoted status, otherwise promotion is permanent.`)
+    .addField('Capturing Pieces',`Captured pieces are held by the player that captured them \
+        and can be retured to play by under their control. On their turn, a player \
+        may choose to drop a piece from their hand instead of moving a piece. This \
+        is done by placing it on an empty square, unpromoted side up and facing \
+        the opposing side. A drop cannot capture a piece, nor can a piece be promoted \
+        the instant it is dropped. There are three restrictions on where pieces can be dropped:`)
+    .addField('1.',`A piece may not be dropped where it would have no legal moves the next turn. E.g \
+        a pawn, knight, or lance cannot be dropped on the last row, nor a knight on the second-to-last \
+        row.`)
+    .addField('2.',`A pawn cannot be dropped onto a file (column) containing an unpromoted pawn \
+        of the same player (promoted pawns do not count). This is called the Two Pawns rule / \
+        nifu (二歩).`)
+    .addField('3.',`A pawn cannot be dropped to give instant checkmate. \
+        Other pieces may be dropped to give instant checkmate, and a pawn may \
+        give check, as long as it is not mate. Pawns already on the board are not \
+        subject to this rule. This is called the Pawn Drop Mate rule / \
+        uchifudzume (打ち歩詰め).`)
+    .setTimestamp()
+    .setFooter('Showing page 3 of 3')
 
 async function showrules(message, args) {
     if (!args.length) {
@@ -298,9 +328,7 @@ async function showrules(message, args) {
         await sleep(3600);
         message.channel.send(rulesPageTwoFooter);
     } else if (args[0] == '3') {
-        //message.channel.send(rulesPageThree);
-    } else if (args[0] == '4'){
-        //message.channel.send(rulesPageFour)
+        message.channel.send(rulesPageThree);
     } else {
         message.channel.send("`" + args[0] + "` is not a valid page no.")
     }
@@ -416,17 +444,12 @@ function playgame(message, args) {
 }
 
 async function resign(message, args) {
-    /*matches = globalMatches.filter(m => m.id == message.guild.id);
-    if(matches.filter(m => m.challenger == message.author.username).length == 0 &&
-        matches.filter(m => m.opponent == message.author.username).length == 0) 
-            return message.channel.send(`<@${message.author.id}> you are not in any matches right now!`);*/
-    //matches = matches.filter(m => m.challenger == message.author.username || m.opponent == message.author.username)[0];
     gameMessage = await getMessage(message);
     if(gameMessage != null) {
         challenger = gameMessage.embeds[0].title.split(' ')[0];
         opponent = gameMessage.embeds[0].title.split(' ')[2];
         winner = challenger == message.author.username ? opponent : challenger;
-        message.channel.send(`<@${message.author.id}> has resigned,  <@${client.users.cache.find(user => user.username == winner).id}> is the winner!`);
+        message.channel.send(`<@${message.author.id}> has resigned, <@${client.users.cache.find(user => user.username == winner).id}> is the winner!`);
         try {
             index = globalMatches.findIndex(m => m.challenger == message.author.username || m.opponent == message.author.username);
             globalMatches.splice(index, 1);
@@ -460,12 +483,12 @@ function acceptmatch(message, args) {
 }
 
 class Game {
-    startPosition = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 0";
+    startPosition = 'lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 0';
     constructor(challenger,opponent) {
-        this.title = challenger + " vs. " + opponent;
+        this.title = challenger + ' vs. '+ opponent;
         this.board = this.startPosition;
-        this.style = "trad";
-        this.moves = "";
+        this.style = 'trad';
+        this.moves = '';
         this.array = new Array(9).fill('_').map(() => new Array(9).fill('_'));
     }
     setGameData(board,style,moves) {
@@ -530,52 +553,93 @@ class Game {
     }
     move(move,message,opponent) {
         this.updateArray();
-        let rank = (isNaN(move.charAt(0)) ? move.charAt(0).toLowerCase().charCodeAt(0) - 97 + 1 : parseInt(move.charAt(0))) - 1;
-        let file = 9 - (isNaN(move.charAt(1)) ? move.charAt(1).toLowerCase().charCodeAt(0) - 97 + 1 : parseInt(move.charAt(1)));
-        let destx = (isNaN(move.charAt(2)) ? move.charAt(2).toLowerCase().charCodeAt(0) - 97 + 1 : parseInt(move.charAt(2))) - 1;
-        let desty = 9 - (isNaN(move.charAt(3)) ? move.charAt(3).toLowerCase().charCodeAt(0) - 97 + 1 : parseInt(move.charAt(3)));
-        if(rank > 8 || file > 8 || destx > 8 || desty > 8 || rank < 0 || file < 0 || destx < 0 || desty < 0) {
-            message.channel.send(`<@${message.author.id}> ${move} is not on the board!`);
-            return false;
-        }
-        if(rank == destx && file == desty) {
-            message.channel.send(`<@${message.author.id}> that piece is already there!`);
-            return false;
-        }
-        //console.log(rank,file,destx,desty,this.array);
-        const testColor = this.board.split(' ')[1] == 'b' ? this.array[rank][file].toUpperCase() : this.array[rank][file].toLowerCase();
-        const playerTurn = this.board.split(' ')[1] == 'b' ? this.title.split(' ')[0] : this.title.split(' ')[2];
-        if(this.array[rank][file] == '_') {
-            message.channel.send(`<@${message.author.id}> there is no piece there!`);
-            return false;
-        } else if(this.array[rank][file] != testColor) {
-            message.channel.send(`<@${message.author.id}> that is not one of your pieces!`);
-            return false;
-        } else if(message.author.username != playerTurn) {
-            message.channel.send(`<@${message.author.id}> it is not your turn right now!`);
-            return false;
+        if(move.charAt(1) != '*') {
+            let rank = (isNaN(move.charAt(0)) ? move.charAt(0).toLowerCase().charCodeAt(0) - 97 + 1 : parseInt(move.charAt(0))) - 1;
+            let file = 9 - (isNaN(move.charAt(1)) ? move.charAt(1).toLowerCase().charCodeAt(0) - 97 + 1 : parseInt(move.charAt(1)));
+            let destx = (isNaN(move.charAt(2)) ? move.charAt(2).toLowerCase().charCodeAt(0) - 97 + 1 : parseInt(move.charAt(2))) - 1;
+            let desty = 9 - (isNaN(move.charAt(3)) ? move.charAt(3).toLowerCase().charCodeAt(0) - 97 + 1 : parseInt(move.charAt(3)));
+            if(rank > 8 || file > 8 || destx > 8 || desty > 8 || rank < 0 || file < 0 || destx < 0 || desty < 0) {
+                message.channel.send(`<@${message.author.id}> ${move} is not on the board!`);
+                return false;
+            }
+            if(rank == destx && file == desty) {
+                message.channel.send(`<@${message.author.id}> that piece is already there!`);
+                return false;
+            }
+            //console.log(rank,file,destx,desty,this.array);
+            const testColor = this.board.split(' ')[1] == 'b' ? this.array[rank][file].toUpperCase() : this.array[rank][file].toLowerCase();
+            const playerTurn = this.board.split(' ')[1] == 'b' ? this.title.split(' ')[0] : this.title.split(' ')[2];
+            if(this.array[rank][file] == '_') {
+                message.channel.send(`<@${message.author.id}> there is no piece there!`);
+                return false;
+            } else if(this.array[rank][file] != testColor) {
+                message.channel.send(`<@${message.author.id}> that is not one of your pieces!`);
+                return false;
+            } else if(message.author.username != playerTurn) {
+                message.channel.send(`<@${message.author.id}> it is not your turn right now!`);
+                return false;
+            } else {
+                //console.log(rank,file,destx,desty,this.array[rank][file],move,validate(this.array[rank][file],[rank,file],[destx,desty],this.array));
+                if(!validate(this.array[rank][file],[rank,file],[destx,desty],this.array)) {
+                    message.channel.send(`<@${message.author.id}> ${move} is not a valid move!`);
+                    return false;
+                }
+                const piece = this.array[rank][file];
+                this.array[rank][file] = '_';
+                if(this.array[destx][desty].replace('+','').toLowerCase() == 'k') {
+                    message.channel.send(`<@${message.author.id}> has captured the enemy king and won the game! <@${client.users.cache.find(user => user.username == opponent).id}> has lost!`);
+                    try {
+                        const index = globalMatches.findIndex(m => m.challenger == message.author.username || m.opponent == message.author.username);
+                        globalMatches.splice(index, 1);
+                    } catch(err) {}
+                    return false;
+                }
+                if(this.array[destx][desty] != '_')
+                    this.board = capture(this.board,this.array[destx][desty]);
+                this.array[destx][desty] = piece;
+            }
         } else {
-            //console.log(rank,file,destx,desty,this.array[rank][file],move,validate(this.array[rank][file],[rank,file],[destx,desty],this.array));
-            if(!validate(this.array[rank][file],[rank,file],[destx,desty],this.array)) {
-                message.channel.send(`<@${message.author.id}> ${move} is not a valid move!`);
+            let destx = (isNaN(move.charAt(2)) ? move.charAt(2).toLowerCase().charCodeAt(0) - 97 + 1 : parseInt(move.charAt(2))) - 1;
+            let desty = 9 - (isNaN(move.charAt(3)) ? move.charAt(3).toLowerCase().charCodeAt(0) - 97 + 1 : parseInt(move.charAt(3)));
+            const piece = this.board.split(' ')[1] == 'b' ? move.charAt(0).toUpperCase() : move.charAt(0).toLowerCase();
+            if(destx > 8 || desty > 8 || destx < 0 || desty < 0) {
+                message.channel.send(`<@${message.author.id}> ${move} is not on the board!`);
                 return false;
             }
-            const piece = this.array[rank][file];
-            this.array[rank][file] = '_';
-            if(this.array[destx][desty].replace('+','').toLowerCase() == 'k') {
-                message.channel.send(`<@${message.author.id}> has captured the enemy king and won the game! <@${client.users.cache.find(user => user.username == opponent).id}> has lost!`);
-                try {
-                    const index = globalMatches.findIndex(m => m.challenger == message.author.username || m.opponent == message.author.username);
-                    globalMatches.splice(index, 1);
-                } catch(err) {}
+            if(this.array[destx][desty] != '_') {
+                message.channel.send(`<@${message.author.id}> you cannot drop a piece on another piece!`);
                 return false;
             }
-            if(this.array[destx][desty] != '_')
-                this.board = capture(this.board,this.array[destx][desty]);
+            let temp = capture(this.board,piece+'rem');
+            if(!temp) {
+                message.channel.send(`<@${message.author.id}> you do not have that piece in hand!`);
+                return false;
+            } else {
+                this.board = temp;
+            }
+            //console.log(destx,desty);
+            if( ( (piece == 'p' || piece == 'l') && destx > 7 ) || ( (piece == 'P' || piece == 'L') && destx < 1 ) ||
+                ( (piece == 'n') && destx > 6 ) || ( (piece == 'N') && destx < 2 ) ) {
+                    message.channel.send(`<@${message.author.id}> you cannot drop a piece where it has no more valid moves.`);
+                    return false;
+            }
+            if(piece.toLowerCase() == 'p') {
+                for(let i = 0; i < 9; i++) {
+                    let mask = this.array[i][desty];
+                    if(mask == piece) {
+                        message.channel.send('Warning: possible Two Pawn rule violation / nifu (二歩)')
+                        break;
+                    }
+                }
+                if( (piece == 'P' && this.array[destx-1][desty] == 'k') ||
+                    (piece == 'p' && this.array[destx+1][desty] == 'K') ) {
+                    message.channel.send('Warning: possible Pawn Drop Mate rule violation / uchifudzume (打ち歩詰め)');
+                }
+            }
             this.array[destx][desty] = piece;
-            this.updateSfen();
-            return true;
         }
+        this.updateSfen();
+        return true;
     }
     async displayGame(message) {
         const file = this.title.replace(/\s/g,'_') + '.png';
@@ -594,11 +658,57 @@ class Game {
             .setDescription(playerTurn)
             .attachFiles(['./games/' + this.gameBoard])
             .setImage('attachment://' + this.gameBoard)
-            .addField('Moves',(this.moves == '')?'None':this.moves)
+            .addField('Moves',(this.moves == '')?'`None`':'`'+this.moves+'`')
             .addField('Game Data','||' + this.board + " " + this.style + '||')
             .setTimestamp()
         message.channel.send(gameEmbed);
     }
+}
+
+function capture(board,piece) {
+    board = board.split(' ');
+    piecesInHand = board[2];
+    hands = {
+        R:0,B:0,G:0,S:0,N:0,L:0,P:0,
+        r:0,b:0,g:0,s:0,n:0,l:0,p:0
+    }
+    for(i = 0; i < piecesInHand.length; i++) {
+        if(isNaN(piecesInHand.charAt(i))) {
+            if(piecesInHand.charAt(i) != '-') {
+                hands[piecesInHand.charAt(i)] = 1;
+            }
+        } else {
+            temp = parseInt(piecesInHand.charAt(i));
+            i++;
+            hands[piecesInHand.charAt(i)] = temp;
+        }
+    }
+    //console.log(hands,piece);
+    if(piece == piece.toUpperCase())
+        newPiece = piece.toLowerCase();
+    else
+        newPiece = piece.toUpperCase();
+    if(piece.slice(1,piece.length) != 'rem') {
+        hands[newPiece] += 1;
+    } else {
+        if(hands[piece.charAt(0)] == 0)
+            return false;
+        hands[piece.charAt(0)] -= 1;
+    }
+    newString = '';
+    for(var pieces in hands) {
+        if(hands[pieces] == 1) {
+            newString += pieces;
+        } else if(hands[pieces] > 1) {
+            newString += hands[pieces];
+            newString += pieces;
+        }
+    }
+    if(newString == '') {
+        newString = '-';
+    }
+    board[2] = newString;
+    return board.join(' ');
 }
 
 async function getMessage(message) {
@@ -643,16 +753,64 @@ async function getMessage(message) {
         return gameMessage;
 }
 
-async function movepiece(message, args) {
-    if (!args.length || args[0].length != 4) {
-        return message.channel.send(`<@${message.author.id}> please make sure you are following the correct format \`${prefix}move [xyxy]\``);
-    }
+async function changestyle(message, args) {
+    if(!args.length)
+        style = 'trad';
+    else if(args[0] == 'intl')
+        style = 'intl';
+    else
+        style = 'trad';
     gameMessage = await getMessage(message);
     if(gameMessage != null) {
         challenger = gameMessage.embeds[0].title.split(' ')[0];
         opponent = gameMessage.embeds[0].title.split(' ')[2];
         if(gameMessage.embeds[0].fields[0].name == 'Moves') 
             moves = gameMessage.embeds[0].fields[0].value;
+            moves = moves.slice(1,moves.length-1);
+        if(gameMessage.embeds[0].fields[1].name == 'Game Data') {
+            gameData = gameMessage.embeds[0].fields[1].value;
+            gameData = gameData.slice(2,gameData.length).split(' ');
+            board = gameData.slice(0,gameData.length-1).join(' ');
+        }
+        game = new Game(challenger,opponent);
+        if(moves != 'None')
+            return message.channel.send('Piece style can only be changed on the first turn of a match!');
+        game.setGameData(board,style,moves);
+        game.displayGame(message);
+    }
+}
+
+async function undomove(message, args) {
+    gameMessage = await getMessage(message);
+    if(gameMessage != null) {
+        if(gameMessage.embeds[0].fields[0].name == 'Moves') 
+            moves = gameMessage.embeds[0].fields[0].value;
+            moves = moves.slice(1,moves.length-1);
+        if(gameMessage.embeds[0].fields[1].name == 'Game Data') {
+            gameData = gameMessage.embeds[0].fields[1].value;
+            gameData = gameData.slice(2,gameData.length).split(' ');
+            board = gameData.slice(0,gameData.length-1).join(' ');
+        }
+        playerTurn = board.split(' ')[1] == 'b' ? gameMessage.embeds[0].title.split(' ')[0] : gameMessage.embeds[0].title.split(' ')[2];
+        if(message.author.username == playerTurn)
+            return message.channel.send(`<@${message.author.id}> you can only undo *your* moves!`);
+        if(moves == 'None')
+            return message.channel.send('Cannot undo a match with no moves!');
+        gameMessage.delete();
+        message.channel.send('Move undone!');
+    }
+}
+
+async function movepiece(message, args) {
+    if(!args.length || args[0].length != 4)
+        return message.channel.send(`<@${message.author.id}> please make sure you are following the correct format \`${prefix}move [xyxy]\``);
+    gameMessage = await getMessage(message);
+    if(gameMessage != null) {
+        challenger = gameMessage.embeds[0].title.split(' ')[0];
+        opponent = gameMessage.embeds[0].title.split(' ')[2];
+        if(gameMessage.embeds[0].fields[0].name == 'Moves') 
+            moves = gameMessage.embeds[0].fields[0].value;
+            moves = moves.slice(1,moves.length-1);
         if(gameMessage.embeds[0].fields[1].name == 'Game Data') {
             gameData = gameMessage.embeds[0].fields[1].value;
             gameData = gameData.slice(2,gameData.length).split(' ');
@@ -670,54 +828,12 @@ async function movepiece(message, args) {
             board[3] = (parseInt(board[3]) + 1).toString(10);
             board = board.join(' ');
             moves = game.moves;
-            moves = moves == 'None' ? args[0] : moves + ' ' + args[0];
+            move = args[0].charAt(1) == '*' ? args[0].charAt(0).toUpperCase() + args[0].slice(1,args[0].length) : args[0];
+            moves = moves == 'None' ? move : moves + ' ' + move;
             game.setGameData(board,style,moves);
             game.displayGame(message);
         }
     }
-}
-
-function capture(board,piece) {
-    board = board.split(' ');
-    piecesInHand = board[2];
-    hands = {
-        R:0,B:0,G:0,S:0,N:0,L:0,P:0,
-        r:0,b:0,g:0,s:0,n:0,l:0,p:0
-    }
-    for(i = 0; i < piecesInHand.length; i++) {
-        if(isNaN(piecesInHand.charAt(i))) {
-            if(piecesInHand.charAt(i) != '-') {
-                hands[piecesInHand.charAt(i)] = 1;
-            }
-        } else {
-            temp = parseInt(piecesInHand.charAt(i));
-            i++;
-            hands[piecesInHand.charAt(i)] = temp;
-        }
-    }
-    if(piece == piece.toUpperCase())
-        newPiece = piece.toLowerCase();
-    else
-        newPiece = piece.toUpperCase();
-    if(piece != 'rem') { //for drops i assume? i can't remember now...
-        hands[newPiece] += 1;
-    } else {
-        hands[newPiece] -= 1;
-    }
-    newString = '';
-    for(var pieces in hands) {
-        if(hands[pieces] == 1) {
-            newString += pieces;
-        } else if(hands[pieces] > 1) {
-            newString += hands[pieces];
-            newString += pieces;
-        }
-    }
-    if(newString == '') {
-        newString = '-';
-    }
-    board[2] = newString;
-    return board.join(' ');
 }
 
 function validate(piece, start, dest, board) {
@@ -976,11 +1092,15 @@ client.on('message', message => {
         acceptmatch(message,args);
     } else if (command === 'rules') {
         showrules(message,args);
-    } else if (command === 'move') {
+    } else if (command === 'move' || command === 'drop') {
         //testGame.move(args[0],message);
         movepiece(message,args);
     } else if (command === 'resign') {
         resign(message,args);
+    } else if (command === 'style') {
+        changestyle(message,args);
+    } else if (command === 'undo') {
+        undomove(message,args);
     }
 
 }) 

@@ -3,7 +3,7 @@ Discord bot for playing shogi (japanese chess) made with Discord.js and PIL
 Requires node.js with packages `child_process` and `discord.js`  
 ![Shogi Piece](oushou.jpeg)  
 Poorly cobbled together by me only a week after I learned how to play.  
-Curretly *somewhat close* to being done. Check back for updates.
+Curretly *fairly close* to being done. Check back for updates.
 ## Basic Commands
 `s.help`  
 `s.rules`  
