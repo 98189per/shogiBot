@@ -4,6 +4,9 @@ drawing
 # stores gameboard images
 games
 
+# get from https://github.com/gikou-official/Gikou
+gikou2_win
+
 # original resources (2x larger)
 l_resources
 
