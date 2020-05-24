@@ -16,3 +16,4 @@ config.json
 
 # testing output (s.board ... [-o] temp.png)
 temp.png
+test.js

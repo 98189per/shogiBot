@@ -20,3 +20,7 @@ Numbers: https://www.onlygfx.com/
 Pictures used in piece explanations: From Wikimedia Commons, the free media repository  
 - By en:user:Akanemoto / Public domain  
 - By Hari Seldon / CC BY-SA (https://creativecommons.org/licenses/by-sa/3.0)
+## Shogi Engine
+Yosuke Demura (2017).
+Shogi Software Gikou 2 (v2.0.2)
+GitHub https://github.com/gikou-official/Gikou

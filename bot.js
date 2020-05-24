@@ -338,28 +338,28 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-var exec = require('child_process').execFile;
-/**
- * Function to execute exe
- * @param {string} fileName The name of the executable file to run.
- * @param {string[]} params List of string arguments.
- * @param {string} path Current working directory of the child process.
- */
-function execute(fileName, params, path) {
-    let promise = new Promise((resolve, reject) => {
-        exec(fileName, params, { cwd: path }, (err, data) => {
-            if (err) reject(err);
-            else resolve(data);
-        });
+var child_process = require('child_process');
 
-    });
+function execute(command) {
+    return new Promise(resolve => {
+        child_process.exec(command, function(error, stdout, stderr) {
+            resolve(stdout)
+        })
+    })
+}
 
-    return promise;
+async function enginemove(board) {
+    command = `runengine.bat "${board}" "..\\games\\temp1.txt"`;
+    ans = await execute(command);
+    n = ans.indexOf('bestmove')+'bestmove'.length+1
+    ans = ans.slice(n,n+7).split(' ')[0]
+    //console.log(ans)
+    return ans
 }
 
 async function drawboard(message, args) {
     try {
-        await execute("python",["drawboard.py",args.join(' ')],"./")
+        await execute("python drawboard.py " + args.join(' '))
         message.channel.send({
             files: [{
                 attachment: './temp.png',
@@ -379,14 +379,17 @@ class match {
         if(type == 'open') {
             this.type = 'open';
             this.status = 'open';
+        } else if(type == 'cpu') {
+            this.opponent = 'CPU';
+            this.status = 'playing';
         } else {
             this.opponent = type;
-            this.status = "requested";
+            this.status = 'requested';
         }
     }
     accept(opponent) {
         this.opponent = opponent;
-        this.status = "playing"
+        this.status = 'playing';
     }
 }
 
@@ -425,13 +428,22 @@ function playgame(message, args) {
             .addField('opponent(gote)        ',`${opponents}`,true)
             .setTimestamp()
         message.channel.send(boardEmbed);
-    } else if(args[0] == 'open') {
+    } else if(args[0].toLowerCase() == 'open') {
         if(matches.filter(m => m.challenger == message.author.username).length != 0 ||
             matches.filter(m => m.opponent == message.author.username).length != 0) {
                 return message.channel.send(`<@${message.author.id}> you are already in a match!`);
         }
         globalMatches.push(new match(message.author.username,'open',message.guild.id));
-        message.channel.send(`<@${message.author.id}> is hosting an open match!`)
+        message.channel.send(`<@${message.author.id}> is hosting an open match!`);
+    } else if(args[0].toLowerCase() == 'cpu') {
+        if(matches.filter(m => m.challenger == message.author.username).length != 0 ||
+            matches.filter(m => m.opponent == message.author.username).length != 0) {
+                return message.channel.send(`<@${message.author.id}> you are already in a match!`);
+        }
+        globalMatches.push(new match(message.author.username,'cpu',message.guild.id));
+        message.channel.send('You challenged the computer!\nGet ready to play!');
+        game = new Game(message.author.username,'CPU');
+        game.displayGame(message);
     } else {
         if(matches.filter(m => m.challenger == message.author.username).length != 0 ||
             matches.filter(m => m.opponent == message.author.username).length != 0) {
@@ -449,7 +461,10 @@ async function resign(message, args) {
         challenger = gameMessage.embeds[0].title.split(' ')[0];
         opponent = gameMessage.embeds[0].title.split(' ')[2];
         winner = challenger == message.author.username ? opponent : challenger;
-        message.channel.send(`<@${message.author.id}> has resigned, <@${client.users.cache.find(user => user.username == winner).id}> is the winner!`);
+        if(winner != 'CPU')
+            message.channel.send(`<@${message.author.id}> has resigned, <@${client.users.cache.find(user => user.username == winner).id}> is the winner!`);
+        else
+            return message.channel.send(`<@${message.author.id}> resigned, Computer has won!`);
         try {
             index = globalMatches.findIndex(m => m.challenger == message.author.username || m.opponent == message.author.username);
             globalMatches.splice(index, 1);
@@ -554,10 +569,10 @@ class Game {
     move(move,message,opponent) {
         this.updateArray();
         if(move.charAt(1) != '*') {
-            let rank = (isNaN(move.charAt(0)) ? move.charAt(0).toLowerCase().charCodeAt(0) - 97 + 1 : parseInt(move.charAt(0))) - 1;
-            let file = 9 - (isNaN(move.charAt(1)) ? move.charAt(1).toLowerCase().charCodeAt(0) - 97 + 1 : parseInt(move.charAt(1)));
-            let destx = (isNaN(move.charAt(2)) ? move.charAt(2).toLowerCase().charCodeAt(0) - 97 + 1 : parseInt(move.charAt(2))) - 1;
-            let desty = 9 - (isNaN(move.charAt(3)) ? move.charAt(3).toLowerCase().charCodeAt(0) - 97 + 1 : parseInt(move.charAt(3)));
+            let rank = (isNaN(move.charAt(1)) ? move.charAt(1).toLowerCase().charCodeAt(0) - 97 + 1 : parseInt(move.charAt(1))) - 1;
+            let file = 9 - (isNaN(move.charAt(0)) ? move.charAt(0).toLowerCase().charCodeAt(0) - 97 + 1 : parseInt(move.charAt(0)));
+            let destx = (isNaN(move.charAt(3)) ? move.charAt(3).toLowerCase().charCodeAt(0) - 97 + 1 : parseInt(move.charAt(3))) - 1;
+            let desty = 9 - (isNaN(move.charAt(2)) ? move.charAt(2).toLowerCase().charCodeAt(0) - 97 + 1 : parseInt(move.charAt(2)));
             if(rank > 8 || file > 8 || destx > 8 || desty > 8 || rank < 0 || file < 0 || destx < 0 || desty < 0) {
                 message.channel.send(`<@${message.author.id}> ${move} is not on the board!`);
                 return false;
@@ -575,7 +590,7 @@ class Game {
             } else if(this.array[rank][file] != testColor) {
                 message.channel.send(`<@${message.author.id}> that is not one of your pieces!`);
                 return false;
-            } else if(message.author.username != playerTurn) {
+            } else if(message.author.username != playerTurn && this.title.split(' ')[2] != 'CPU') {
                 message.channel.send(`<@${message.author.id}> it is not your turn right now!`);
                 return false;
             } else {
@@ -584,9 +599,9 @@ class Game {
                     message.channel.send(`<@${message.author.id}> ${move} is not a valid move!`);
                     return false;
                 }
-                const piece = this.array[rank][file];
+                let piece = this.array[rank][file];
                 this.array[rank][file] = '_';
-                if(this.array[destx][desty].replace('+','').toLowerCase() == 'k') {
+                if(this.array[destx][desty].toLowerCase() == 'k') {
                     message.channel.send(`<@${message.author.id}> has captured the enemy king and won the game! <@${client.users.cache.find(user => user.username == opponent).id}> has lost!`);
                     try {
                         const index = globalMatches.findIndex(m => m.challenger == message.author.username || m.opponent == message.author.username);
@@ -596,18 +611,33 @@ class Game {
                 }
                 if(this.array[destx][desty] != '_')
                     this.board = capture(this.board,this.array[destx][desty]);
+                if( (piece == piece.toLowerCase() && (destx > 5 || rank > 5)) ||
+                    (piece == piece.toUpperCase() && (destx < 3 || rank < 3)) ) {
+                    if(move.charAt(4) == '+')
+                        piece = '+' + piece;
+                    else if(piece.charAt(0) != '+')
+                        message.channel.send(`That piece can be promoted with \`${prefix}move [xyxy]+\``);
+                }
+                if( ( (piece == 'p' || piece == 'l') && destx > 7 ) || ( (piece == 'P' || piece == 'L') && destx < 1 ) ||
+                    ( (piece == 'n') && destx > 6 ) || ( (piece == 'N') && destx < 2 ) ) {
+                        piece = '+' + piece;
+                }
                 this.array[destx][desty] = piece;
             }
         } else {
             let destx = (isNaN(move.charAt(2)) ? move.charAt(2).toLowerCase().charCodeAt(0) - 97 + 1 : parseInt(move.charAt(2))) - 1;
             let desty = 9 - (isNaN(move.charAt(3)) ? move.charAt(3).toLowerCase().charCodeAt(0) - 97 + 1 : parseInt(move.charAt(3)));
             const piece = this.board.split(' ')[1] == 'b' ? move.charAt(0).toUpperCase() : move.charAt(0).toLowerCase();
+            const playerTurn = this.board.split(' ')[1] == 'b' ? this.title.split(' ')[0] : this.title.split(' ')[2];
             if(destx > 8 || desty > 8 || destx < 0 || desty < 0) {
                 message.channel.send(`<@${message.author.id}> ${move} is not on the board!`);
                 return false;
             }
             if(this.array[destx][desty] != '_') {
                 message.channel.send(`<@${message.author.id}> you cannot drop a piece on another piece!`);
+                return false;
+            } else if(message.author.username != playerTurn && this.title.split(' ')[2] != 'CPU') {
+                message.channel.send(`<@${message.author.id}> it is not your turn right now!`);
                 return false;
             }
             let temp = capture(this.board,piece+'rem');
@@ -645,7 +675,8 @@ class Game {
         const file = this.title.replace(/\s/g,'_') + '.png';
         try {
             const args = this.board + " " + this.style + " " + './games/' +  file;
-            await execute("python",["drawboard.py",args],"./");
+            //console.log("python drawboard.py " + args)
+            await execute("python drawboard.py " + args);
             this.gameBoard = file;
         }
         catch(err) {
@@ -792,7 +823,7 @@ async function undomove(message, args) {
             board = gameData.slice(0,gameData.length-1).join(' ');
         }
         playerTurn = board.split(' ')[1] == 'b' ? gameMessage.embeds[0].title.split(' ')[0] : gameMessage.embeds[0].title.split(' ')[2];
-        if(message.author.username == playerTurn)
+        if(message.author.username == playerTurn && gameMessage.embeds[0].title.split(' ')[2] != 'CPU')
             return message.channel.send(`<@${message.author.id}> you can only undo *your* moves!`);
         if(moves == 'None')
             return message.channel.send('Cannot undo a match with no moves!');
@@ -802,7 +833,7 @@ async function undomove(message, args) {
 }
 
 async function movepiece(message, args) {
-    if(!args.length || args[0].length != 4)
+    if(!args.length || args[0].length < 4)
         return message.channel.send(`<@${message.author.id}> please make sure you are following the correct format \`${prefix}move [xyxy]\``);
     gameMessage = await getMessage(message);
     if(gameMessage != null) {
@@ -831,6 +862,37 @@ async function movepiece(message, args) {
             move = args[0].charAt(1) == '*' ? args[0].charAt(0).toUpperCase() + args[0].slice(1,args[0].length) : args[0];
             moves = moves == 'None' ? move : moves + ' ' + move;
             game.setGameData(board,style,moves);
+            if(opponent == 'CPU') {
+                thinking = await message.channel.send('Computer is thinking...');
+                move = await enginemove(game.board);
+                //console.log(move,game.board);
+                if(move == 'resign') {
+                    message.channel.send(`CPU has resigned, <@${message.author.id}> is the winner! Congratulations!`);
+                    try {
+                        index = globalMatches.findIndex(m => m.challenger == message.author.username || m.opponent == message.author.username);
+                        globalMatches.splice(index, 1);
+                        return;
+                    } catch(err) {}
+                } else if(move == 'win' || move == '') {
+                    message.channel.send(`CPU has won the game, <@${message.author.id}> has lost! Better luck next time...`);
+                    try {
+                        index = globalMatches.findIndex(m => m.challenger == message.author.username || m.opponent == message.author.username);
+                        globalMatches.splice(index, 1);
+                        return;
+                    } catch(err) {}
+                } else {
+                    game.move(move,message,message.author.username);
+                    board = game.board;
+                    board = board.split(' ');
+                    board[1] = board[1] == 'b' ? 'w' : 'b';
+                    board[3] = (parseInt(board[3]) + 1).toString(10);
+                    board = board.join(' ');
+                    moves = game.moves;
+                    moves = moves + ' ' + move;
+                    game.setGameData(board,style,moves);
+                    thinking.delete();
+                }
+            }
             game.displayGame(message);
         }
     }
@@ -931,11 +993,12 @@ function validate(piece, start, dest, board) {
                     return true;
             }
         case 'b':
-            if((dest[0]-start[0])/(dest[1]-start[1]) == 1 || (dest[0]-start[0])/(dest[1]-start[1]) == -1 ) {
-                for(i = Math.min(start[0],dest[0])+1; i < Math.max(start[0],dest[0]); i++) {
-                    mask = board[i][Math.min(start[1],dest[1])+i-Math.min(start[0],dest[0])];
-                    if( (mask != '_' && i != dest[0] &&
-                        Math.min(start[1],dest[1])+i-Math.min(start[0],dest[0]) != dest[1]) || 
+            if((m = dest[0]-start[0])/(dest[1]-start[1]) == 1 || (m = dest[0]-start[0])/(dest[1]-start[1]) == -1 ) {
+                for(i = 1; i < Math.abs(start[1]-dest[1]); i++) {
+                    slope = m == 1 ? Math.min(start[0],dest[0])+i : Math.max(start[0],dest[0])-i;
+                    mask = board[slope][Math.min(start[1],dest[1])+i];
+                    if( (mask != '_' && slope != dest[0] &&
+                        Math.min(start[1],dest[1])+i != dest[1]) || 
                         mask != mask.toUpperCase() )
                             return false;
                 }
@@ -1038,11 +1101,12 @@ function validate(piece, start, dest, board) {
                     return true;
             }
         case 'B':
-            if((dest[0]-start[0])/(dest[1]-start[1]) == 1 || (dest[0]-start[0])/(dest[1]-start[1]) == -1 ) {
-                for(i = Math.min(start[0],dest[0])+1; i < Math.max(start[0],dest[0]); i++) {
-                    mask = board[i][Math.min(start[1],dest[1])+i-Math.min(start[0],dest[0])];
-                    if( (mask != '_' && i != dest[0] &&
-                        Math.min(start[1],dest[1])+i-Math.min(start[0],dest[0]) != dest[1]) || 
+            if((m = dest[0]-start[0])/(dest[1]-start[1]) == 1 || (m = dest[0]-start[0])/(dest[1]-start[1]) == -1 ) {
+                for(i = 1; i < Math.abs(start[1]-dest[1]); i++) {
+                    slope = m == 1 ? Math.min(start[0],dest[0])+i : Math.max(start[0],dest[0])-i;
+                    mask = board[slope][Math.min(start[1],dest[1])+i];
+                    if( (mask != '_' && slope != dest[0] &&
+                        Math.min(start[1],dest[1])+i != dest[1]) || 
                         mask != mask.toLowerCase() )
                             return false;
                 }
@@ -1056,6 +1120,8 @@ function validate(piece, start, dest, board) {
 }
 
 //console.log(capture('lnsgkgsnl/6rb1/ppppppp2/7pp/9/9/PPPPPPPP1/1B5R1/LNSGKGSNL b 4pRbN 6','P'));
+//enginemove("8l/1l+R2P3/p2pBG1pp/kps1p4/Nn1P2G2/P1P1P2PP/1PS6/1KSG3+r1/LN2+p3L w Sbgn3p 124")
+//enginemove("lnsgkg1nl/1r5s1/pppppp1pp/6p2/9/2P3P2/PP1PPP1PP/7R1/LNSGKGSNL w Bb 5")
 //throw('test');
 const client = new Discord.Client()
 //var testGame = new Game("a","b")
@@ -1063,7 +1129,13 @@ const client = new Discord.Client()
 client.on('ready', () => {
 
     console.log(`Logged in as ${client.user.tag}!`)
-
+    client.user.setPresence({
+        status: 'online',
+        activity: {
+            type: 'PLAYING',
+            name: `${prefix}help`
+        }
+    })
 })
 
 client.on('message', message => {
